@@ -1,0 +1,123 @@
+#include<Wire.h>
+#include "TinyGPS++.h"
+#include "SparkFun_MS5637_Arduino_Library.h"
+
+#define SLAVEADDRESS 0x08
+
+String a;
+int detected=0;
+int i;
+String sendData;
+
+float altitudeFeet=0.0;
+float curgpslat=0.0;
+float curgpslong=0.0;
+float finallat=0.0;
+float finallong = 0.0;
+
+int GPSBaud = 9600;
+
+TinyGPSPlus gps;
+
+//SoftwareSerial1 gpsSerial1(RXPin, TXPin);
+MS5637 barometricSensor;
+
+float startingPressure = 0.0;
+
+
+
+
+void setup()
+{
+Serial1.begin(115200);
+Serial2.begin(115200);
+Wire.begin();
+//Wire.onReceive(requestEvent);
+//Wire.onRequest(sendData);
+
+if (barometricSensor.begin() == false)
+{
+Serial1.println("MS5637 sensor did not respond. Please check wiring,,");
+}
+
+barometricSensor.setResolution(ms5637_resolution_osr_8192);
+
+startingPressure = 0.0;
+for (int x = 0 ; x < 16 ; x++)
+startingPressure += barometricSensor.getPressure();
+startingPressure /= (float)16;
+}
+
+void loop()
+{
+if(Serial1.available())
+{
+a=Serial1.readString();
+}
+
+float currentPressure = barometricSensor.getPressure();
+float altitudeDelta = barometricSensor.altitudeChange(currentPressure, startingPressure);
+altitudeFeet = altitudeDelta * 3.28084;
+while (Serial2.available())
+  {
+    gps.encode(Serial2.read());
+  }
+
+ Wire.requestFrom(SLAVEADDRESS, 1);
+ detected = Wire.read();
+ Wire.beginTransmission(SLAVEADDRESS);
+Wire.write(a.charAt(0));
+Wire.endTransmission();
+Serial1.print(altitudeFeet, 1);
+Serial1.print(",");
+if (gps.location.isValid())
+{
+curgpslat=gps.location.lat();
+curgpslong=gps.location.lng();
+Serial1.print(curgpslat,10);
+Serial1.print(",");
+Serial1.print(curgpslong,10);
+Serial1.print(",");
+Serial1.print("\n");
+Serial1.print(detected);
+}
+else
+{
+Serial1.print("Location: Not Available,");
+Serial1.println(1);
+
+}
+}
+
+/*
+void sendData()
+{
+Wire.write(a);
+}
+*/
+
+
+/*void requestEvent(int numBytes)
+{
+detected = Wire.read();
+
+Serial1.print(altitudeFeet, 1);
+Serial1.print(",");
+if (gps.location.isValid())
+{
+curgpslat=gps.location.lat();
+curgpslong=gps.location.lng();
+Serial1.print(curgpslat,10);
+Serial1.print(",");
+Serial1.print(curgpslong,10);
+Serial1.print(",");
+Serial1.print("\n");
+Serial1.print(detected);
+}
+else
+{
+Serial1.print("Location: Not Available,");
+Serial1.println(1);
+}
+}
+*/
